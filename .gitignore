@@ -1,0 +1,25 @@
+# Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Environment variables
+.env
+
+# Data folder — don't track raw data
+tweets_import/data/
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+.DS_Store
