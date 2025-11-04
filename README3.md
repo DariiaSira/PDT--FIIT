@@ -1,15 +1,14 @@
-# 🧭 Protokol z cvičenia – OpenStreetMap & Priestorové dáta (PostGIS / QGIS)
+# PROTOCOL FOR TASK 3 -- Priestorové dáta PostGIS
 
-## 🧑‍🎓 Študent
-**Meno a priezvisko:** _................................................_  
-**Dátum odovzdania:** _................................................_  
-**Predmet:** Priestorové databázové technológie  
-**Cvičenie:** Práca s OSM dátami, PostGIS, QGIS  
-**Semester:** ZS / 2025  
+**Author:** Dariia Sira  
+**Date:** 2025-10-10  
 
 ---
 
-## 🧩 Zadanie
+## 1. Project Overview
+Zadanie je zamerané na overenie vedomostí v oblasti PostGIS. Vašou úlohou bude vypracovať úlohy uvedené nižšie.
+
+## 2. Solution
 
 ### 1. Stiahnite a importujte dataset pre **OpenStreetMap** z [https://download.geofabrik.de/europe/slovakia.html](https://download.geofabrik.de/europe/slovakia.html) do **novej databázy**.
 
@@ -207,7 +206,6 @@ I checked it and visualized it in geojson.io:
 
 My house polygon was added correctly and appears in the right location.
 
-
 ### 5. Zistite, **v akom kraji** sa nachádza váš dom.
 
 I checked which region contains my house polygon using a spatial join. The query showed that my house is located in **Bratislavský kraj**.
@@ -252,7 +250,8 @@ My current location,POINT(17.1211 48.1601)
 ```
 
 Visualization: 
-<img width="731" height="701" alt="image" src="https://github.com/user-attachments/assets/a60f7833-02bb-4df9-a35c-6b5da85d17c7" />
+<img width="1349" height="854" alt="image" src="https://github.com/user-attachments/assets/e62b71dc-1a66-4adf-995e-81dd0814a83a" />
+
 
 My current location point is saved and displayed correctly.
 
@@ -277,10 +276,12 @@ My current location,Môj dom 2,true
 ```
 
 Visualization:  
-<img width="689" height="682" alt="image" src="https://github.com/user-attachments/assets/5af5305e-9bdb-4e78-be86-57ffe989867a" />
+<img width="731" height="701" alt="image" src="https://github.com/user-attachments/assets/bd0e2701-9134-4014-95f0-3cef770d7a94" />
+
 
 
 ### 8. Zistite, ako ďaleko sa nachádzate od `Fakulta informatiky a informačných technológií STU`. Výpočet realizujte v správnom súradnicovom systéme.
+
 Firstly lets see what is the name of FIIT in this table and then see the distance.
 
 ```
@@ -347,15 +348,270 @@ Košice,243.68,21.228491092984687,48.703575030120014,4326
 
 The smallest district is **Košice**, and its centroid coordinates are shown in EPSG:4326.
 
-### 11. Vytvorte priestorovú tabuľku všetkých **úsekov ciest**, ktoré sa celé nachádzajú  do **10 km** od hranice okresov **Malacky** a **Pezinok**.  
-Vytvorte ďalšiu tabuľku s úsekmi, ktoré túto hranicu **pretínajú alebo sa jej dotýkajú**. Výsledky overte v QGIS.
+### 11. Vytvorte priestorovú tabuľku všetkých **úsekov ciest**, ktoré sa celé nachádzajú  do **10 km** od hranice okresov **Malacky** a **Pezinok**. Vytvorte ďalšiu tabuľku s úsekmi, ktoré túto hranicu **pretínajú alebo sa jej dotýkajú**. Výsledky overte v QGIS.
+
+First, I created a spatial boundary between the districts **Malacky** and **Pezinok**. Then I built a **buffer zone** around this border (10 km) and used it to find two sets of roads:
+
+1. All road segments that lie entirely **within 10 km** of the border.  
+2. All road segments that **touch or cross** the border.
+
+To improve precision, I worked in **EPSG:5514**, which measures distances in meters.  
+`ST_Within()` checks if a geometry is completely inside another, while `ST_Intersects()` detects if two geometries touch or overlap.
+
+
+```
+-- hranice okresov Malacky a Pezinok
+CREATE VIEW hranica_malacky_pezinok_buffer AS
+SELECT ST_Buffer(ST_Transform(geom, 5514), 20000) AS geom  -- 20 km
+FROM hranica_malacky_pezinok;
+
+SELECT ST_GeometryType(geom), ST_Area(geom)
+FROM hranica_malacky_pezinok_buffer;
+
+-- Úseky ciest v okruhu 10 km od hranice
+CREATE TABLE roads_within_10km AS
+SELECT l.*
+FROM planet_osm_line AS l
+         JOIN hranica_malacky_pezinok_buffer AS h
+              ON ST_Within(ST_Transform(l.way, 5514), h.geom)
+WHERE l.highway IS NOT NULL;  -- vyberáme len cesty
+-- ST_DWithin() zistí, či je geometria cesty do 10 km od hranice.
+-- Transformácia na EPSG:5514 zaručí presnosť (v metroch).
+
+-- Úseky ciest, ktoré pretínajú alebo sa dotýkajú hranice
+CREATE TABLE roads_touch_or_cross AS
+SELECT l.*
+FROM planet_osm_line AS l
+         JOIN hranica_malacky_pezinok AS h
+              ON ST_Intersects(ST_Transform(l.way, 5514), ST_Transform(h.geom, 5514))
+WHERE l.highway IS NOT NULL;
+-- ST_Intersects() vracia TRUE, ak sa dve geometrie dotýkajú alebo pretínajú.
+
+-- Overenie výsledkov
+SELECT COUNT(*) AS pocet_v_10km FROM roads_within_10km;
+SELECT COUNT(*) AS pocet_prienik FROM roads_touch_or_cross;
+```
+
+After running the queries, both spatial tables were created successfully:  
+- `roads_within_10km`  
+- `roads_touch_or_cross`
+
+I visualized the result in Python to confirm that the geometries matched correctly with the district borders.
+
+<img width="795" height="858" alt="image" src="https://github.com/user-attachments/assets/a4809613-9df6-47a4-a8f6-4e52d1ee3f4d" />
+
+This task helped to understand how proximity and intersection work in PostGIS — two essential spatial operations. The buffer defines the “influence area,” and by joining it with roads, I could isolate all roads near the boundary and those that physically cross it.
 
 ### 12. Jedným dotazom zistite **číslo a názov katastrálneho územia** (z dát ZBGIS: [https://www.geoportal.sk/sk/zbgis_smd/na-stiahnutie/](https://www.geoportal.sk/sk/zbgis_smd/na-stiahnutie/)), v ktorom sa nachádza **najdlhší úsek cesty (z dát OSM)** v **okrese, kde bývate**.
+
+At first, I couldn’t open the provided ZBGIS link, so I found a similar dataset on the official [GKU website](https://www.gku.sk/gku/produkty-sluzby/na-stiahnutie/zbgis.html).  
+It contained several layers, including **“Geografický názov – Katastrálne územie”**, which lists cadastral areas of Slovakia.  
+I downloaded and imported it into PostgreSQL as a table called `zbgis_katastralne_uzemia`.
+
+```
+import geopandas as gpd
+from sqlalchemy import create_engine
+
+engine = create_engine("postgresql://postgres:postgres@localhost:5432/osm_slovakia")
+
+gdf = gpd.read_file(r"C:\Users\sirad\PycharmProjects\PDT1\gn_shp\GNKU.shp")
+gdf.to_postgis("zbgis_katastralne_uzemia", engine, if_exists="replace", index=False)
+
+print("✅ GNKU (katastrálne územia) bolo úspešne importované do PostGIS!")
+```
+
+To make the queries faster, I created **GIST spatial indexes** on all geometry columns — this helps PostGIS skip unnecessary geometry checks.
+
+```
+CREATE INDEX IF NOT EXISTS idx_osm_line_geom
+    ON planet_osm_line USING GIST (way);
+
+CREATE INDEX IF NOT EXISTS idx_osm_polygon_geom
+    ON planet_osm_polygon USING GIST (way);
+
+CREATE INDEX IF NOT EXISTS idx_zbgis_kat_geom
+    ON zbgis_katastralne_uzemia USING GIST (geometry);
+
+
+-- создаем подзапрос с полигоном Bratislavy
+WITH bratislava_okres AS (
+    SELECT ST_Union(way) AS geom
+    FROM planet_osm_polygon
+    WHERE name ILIKE 'Bratislava%' AND admin_level IN ('6','9')
+)
+SELECT
+    z."IDN5" AS cislo_katastra,
+    z."NM5" AS nazov_katastra,
+    ROUND(CAST(ST_Length(ST_Transform(r.way, 5514)) / 1000 AS numeric), 2) AS dlzka_km
+FROM planet_osm_line AS r
+         JOIN bratislava_okres AS o
+              ON ST_Within(ST_Centroid(r.way), o.geom)
+         JOIN zbgis_katastralne_uzemia AS z
+              ON ST_DWithin(
+                      ST_Transform(ST_Centroid(r.way), 5514),
+                      ST_Transform(z.geometry, 5514),
+                      500  -- радиус в метрах (если GNKU — точки)
+                 )
+WHERE r.highway IS NOT NULL
+ORDER BY ST_Length(ST_Transform(r.way, 5514)) DESC
+LIMIT 1;
+```
+
+Then I prepared the main query:
+- First, I merged all polygons of **Bratislava** (and its municipal parts) into one geometry using `ST_Union()`.
+- Then, I selected all OSM road segments whose **centroid** lies within Bratislava’s boundary (`ST_Within()`).
+- Next, I joined these roads to the **nearest cadastral unit** from ZBGIS using `ST_DWithin()` with a 500 m tolerance — because the GNKU layer stores cadastral centroids as points.
+- Finally, I sorted the results by road length in descending order and limited the output to the longest segment.
+
+```
+870293,Vrakuňa,5.06
+```
+
+So, the longest road segment in Bratislava is located in the cadastral area **Vrakuňa**, and it is approximately **5.06 km** long.
+
+This query combines both **topological filtering** (roads inside Bratislava) and **spatial proximity** (nearest cadastral centroid). Indexing was crucial here — without it, the query took a very long time to run.
 
 ### 13. Vytvorte oblasť **Okolie_Bratislavy**, ktorá:
     - zahŕňa zónu do **20 km od Bratislavy**,
     - **neobsahuje Bratislavu I – V**,  
     - a je **len na území Slovenska**.  
     Zistite jej **výmeru**.
+
+**My approach:**
+1. I found the main **Bratislava polygon** (`admin_level = 6`).
+2. I created a **20 km buffer** around it (`ST_Buffer()`).
+3. Then I collected all Bratislava subdistricts (`Bratislava-…`), except *Bratislava predmestie*, and merged them using `ST_Union()`.
+4. I subtracted these inner parts from the buffer using `ST_Difference()` — this removed the city itself.
+5. I clipped the result with the boundary of Slovakia (`ST_Intersection()`).
+6. Finally, I calculated the total area in **km²** (EPSG:5514).
+
+Firstly lets check names Bratislava in the table:
+
+```
+-- Check what we have in table
+SELECT name, admin_level
+FROM planet_osm_polygon
+WHERE name ILIKE 'Bratislava%';
+```
+
+```
+Bratislava,
+Bratislava,
+Bratislava,
+Bratislava Business Park,
+Bratislava-Petržalka,
+Bratislava-Petržalka,
+Bratislava,
+Bratislava,
+Bratislava,
+Bratislava-Rača,
+Bratislava-Rača,
+Bratislava 35,
+Bratislava-Vajnory,
+Bratislava Business Center V,
+Bratislava Business Center IV,
+Bratislava Business Center III,
+Bratislava Business Center I Plus,
+Bratislava Business Center I,
+Bratislava – Filiálka,
+Bratislava-Filiálka,
+Bratislava-Nové Mesto,
+Bratislava-Nové Mesto,
+Bratislava-Nové Mesto,
+Bratislava-Nové Mesto,
+Bratislava predmestie,
+Bratislava predmestie,
+Bratislava-Vinohrady,
+Bratislava 1 - 811 04,
+Bratislava hlavná stanica,
+Bratislava hl.st.,
+Bratislava hl.st.,
+Bratislava hl.st.,
+Bratislava hl.st.,
+Bratislava hl.st.,
+Bratislava hl.st.,
+Bratislava 1 - 811 05,
+Bratislava,
+Bratislava,
+Bratislava 1 - 811 07,
+Bratislava 1 - 811 05,
+Bratislava - mestská časť Staré Mesto,9
+Bratislava 1 - 811 02,
+Bratislava 1 - 811 06,
+Bratislava 1 - 811 03,
+Bratislava 1 - 811 01,
+Bratislava 1 - 811 08,
+Bratislava 1 - 811 09,
+Bratislava,6
+Bratislava - Lamač,
+Bratislava-Lamač,
+Bratislava-Lamač,
+Bratislava IV - 841 01,
+Bratislava IV - 841 02,
+Bratislava IV - 841 01,
+Bratislava 48,
+Bratislava,
+```
+
+We see the dataset contained many “Bratislava” entries — including railway stations, postal codes, and business centers. Only the administrative polygons with names like *Bratislava I–V* were relevant to exclude. Since *Bratislava predmestie* lies outside those city parts, I kept it.
+
+```
+-- 1️⃣ Граница Bratislavy
+CREATE OR REPLACE VIEW bratislava_okres AS
+SELECT way AS geom
+FROM planet_osm_polygon
+WHERE name = 'Bratislava' AND admin_level = '6';
+
+-- Create 20 km buffer around Bratislava
+CREATE OR REPLACE VIEW bratislava_buffer AS
+SELECT ST_Buffer(ST_Transform(geom, 5514), 20000) AS geom
+FROM bratislava_okres;
+
+-- 3️⃣ Соберём все районы Bratislavy (кроме predmestie)
+CREATE OR REPLACE VIEW bratislava_casti AS
+SELECT ST_Union(way) AS geom
+FROM planet_osm_polygon
+WHERE name ILIKE 'Bratislava%'
+  AND name NOT ILIKE '%predmestie%'  -- predmestie оставляем
+  AND admin_level = '9';
+
+-- 4️⃣ Вычитаем саму Братиславу и её mestské časti из буфера
+CREATE OR REPLACE VIEW okolie_bratislavy_raw AS
+SELECT ST_Difference(
+               (SELECT geom FROM bratislava_buffer),
+               ST_Transform((SELECT ST_Union(geom) FROM bratislava_casti), 5514)
+       ) AS geom;
+
+-- 5️⃣ Ограничиваем территорией Slovenska
+CREATE OR REPLACE VIEW okolie_bratislavy AS
+SELECT ST_Intersection(
+               (SELECT geom FROM okolie_bratislavy_raw),
+               ST_Transform(
+                       (SELECT way FROM planet_osm_polygon
+                        WHERE name ILIKE '%Slovensk%' AND admin_level = '2'),
+                       5514
+               )
+       ) AS geom;
+
+-- Find výmeru in km^2
+SELECT
+    ROUND((ST_Area(geom) / 1000000)::numeric, 2) AS vymera_km2
+FROM okolie_bratislavy;
+```
+
+```
+1838.07
+```
+Visualization:
+<img width="1411" height="999" alt="image" src="https://github.com/user-attachments/assets/fe20b4cb-08f4-4bc7-b53c-d6d0716e0f60" />
+
+
+The resulting polygon represents the **Bratislava surroundings** — the region within 20 km around the capital, excluding the city and limited to Slovak territory. This area could be useful for analyzing suburban development, commuting zones, or environmental studies around Bratislava.
+
+---
+Výstup zadania je realizovaný formou protokolu, kde odpovedáte na jednotlivé otázky. Odpoveď pozostáva z SQL kódu, obrázku výstupu, mapy a zdôvodnenia. Protokol musí ďalej obsahovať všetky formálne náležitosti:
+Znenie zadania
+Meno a priezvisko riešiteľa
+Záver, kde zhodnotíte najväčšie úskalia a čo sa podarilo/nepodarilo realizovať.
 
 
