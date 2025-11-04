@@ -105,17 +105,19 @@ Now we have 7 more tables:
 Using the table `planet_osm_polygon` (admin_level = 4), I selected all Slovak regions and calculated the centroid for each one (longitude and latitude).  
 
 ```
+-- Find all Slovak regions (kraje)
+-- I know that ST_Centroid sometimes gives a point outside of a polygon,
+-- but for large regions it’s fine. If polygons were irregular, I’d use ST_PointOnSurface().
 SELECT
     name,
-    ST_AsText(ST_Centroid(way)) AS centroid_text,
-    ST_X(ST_Transform(ST_Centroid(way), 4326)) AS longitude,
-    ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude
+    ST_AsText(ST_Centroid(way)) AS centroid_text,         -- centroid in text (POINT format)
+    ST_X(ST_Transform(ST_Centroid(way), 4326)) AS longitude,  -- X = longitude in WGS84
+    ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude   -- Y = latitude in WGS84
 FROM planet_osm_polygon
 WHERE admin_level = '4'
   AND boundary = 'administrative'
   AND name IS NOT NULL
 ORDER BY name;
-
 ```
 Result: 
 
@@ -141,6 +143,8 @@ All Slovak regions were displayed correctly with their centroids.
 Next, I calculated the area of each region in **km²** using **EPSG:5514** (the Slovak coordinate system) and sorted them by size.
 
 ```
+-- Here I calculate the area of each region in km².
+-- I always transform to EPSG:5514 (meters), otherwise ST_Area gives nonsense in degrees.
 SELECT
     name,
     ST_Area(ST_Transform(way, 5514)) / 1000000 AS area_km2
@@ -172,6 +176,8 @@ The largest region is **Banskobystrický kraj**, and the smallest one is **Brati
 I took coordinates from Google Maps and created my house polygon in `planet_osm_polygon` (+- 0.0002). The polygon is named **“Môj dom 2”** and it’s in the correct coordinate system (EPSG:4326).  
 
 ```
+-- coordinates must be (longitude latitude), not the other way around.
+-- If I switch them, my house would appear in the wrong place.
 INSERT INTO planet_osm_polygon (osm_id, name, boundary, admin_level, way)
 VALUES (
            -10000,
@@ -190,8 +196,7 @@ VALUES (
            )
        );
 
-
--- Check
+-- Check if my house polygon was added correctly
 SELECT name, ST_AsText(way)
 FROM planet_osm_polygon
 WHERE name = 'Môj dom 2';
@@ -211,6 +216,7 @@ My house polygon was added correctly and appears in the right location.
 I checked which region contains my house polygon using a spatial join. The query showed that my house is located in **Bratislavský kraj**.
 
 ```
+-- I use ST_Contains, but it fails if the house touches the border. In that case I could use ST_Intersects instead.
 SELECT k.name AS kraj
 FROM planet_osm_polygon AS k
          JOIN planet_osm_polygon AS d
@@ -232,6 +238,7 @@ For some cases I also did vizualization, but now tried in python.
 Then I added my current position to the table `planet_osm_point` using coordinates (17.1211, 48.1601) in EPSG:4326. I named it **“My current location”**.
 
 ```
+-- I always set SRID when inserting custom data, otherwise PostGIS can’t calculate distances later.
 INSERT INTO planet_osm_point (osm_id, name, way)
 VALUES (
            -9998,  -- фиктивный ID
@@ -239,7 +246,7 @@ VALUES (
            ST_SetSRID(ST_MakePoint(17.1211, 48.1601), 4326)
        );
 
--- Check
+--  Quick check – just to see that the point exists and looks OK.
 SELECT name, ST_AsText(way)
 FROM planet_osm_point
 WHERE name = 'My current location';
@@ -261,6 +268,7 @@ My current location point is saved and displayed correctly.
 I checked whether my current location point lies inside my house polygon. The query result was `true`, meaning my location is inside my home polygon.
 
 ```
+-- if the point is exactly on the border, ST_Contains will return false. I could replace it with ST_Intersects if needed.
 SELECT
     p.name AS poloha,
     d.name AS dom,
@@ -285,9 +293,11 @@ Visualization:
 Firstly lets see what is the name of FIIT in this table and then see the distance.
 
 ```
+-- Names in OSM are long, so I use ILIKE with part of the text.
 SELECT name FROM planet_osm_point
 WHERE name ILIKE '%Fakulta informatiky%';
 
+-- Very important: I always transform both geometries to EPSG:5514. If not, ST_Distance gives distance in degrees, not meters. Also, PostgreSQL needs CAST() when rounding a float value.
 SELECT
     ROUND(
             ST_Distance(
@@ -328,6 +338,8 @@ So, this square is my house.
 I looked for the smallest district (okres) in Slovakia (admin_level = 6), calculated its area and centroid, and also displayed the EPSG code.
 
 ```
+-- I find the smallest district (okres) in Slovakia and its centroid. I always transform to EPSG:5514 before calculating area (meters → km²).
+-- If I forget ST_Transform, area will be totally wrong (it would be in degrees).
 SELECT
     name,
     ROUND((ST_Area(ST_Transform(way, 5514)) / 1000000)::numeric, 2) AS area_km2,
@@ -335,11 +347,12 @@ SELECT
     ST_Y(ST_Transform(ST_Centroid(way), 4326)) AS latitude,
     Find_SRID('public', 'planet_osm_polygon', 'way') AS epsg_code
 FROM planet_osm_polygon
-WHERE admin_level = '6'
+WHERE admin_level = '6'   -- 6 = okres (district)
   AND boundary = 'administrative'
   AND name IS NOT NULL
 ORDER BY ST_Area(ST_Transform(way, 5514)) ASC
 LIMIT 1;
+-- I sort from smallest to largest and pick the first one. For some multipolygons ST_Centroid might fall outside of the shape, but here it's fine, since districts are regular polygons.
 ```
 
 ```
@@ -360,36 +373,38 @@ To improve precision, I worked in **EPSG:5514**, which measures distances in met
 
 
 ```
--- hranice okresov Malacky a Pezinok
+-- I create a buffer zone (20 km) around the boundary between Malacky and Pezinok. I use EPSG:5514 because buffer distance (20,000) must be in meters, not degrees.
+
 CREATE VIEW hranica_malacky_pezinok_buffer AS
-SELECT ST_Buffer(ST_Transform(geom, 5514), 20000) AS geom  -- 20 km
+SELECT ST_Buffer(ST_Transform(geom, 5514), 20000) AS geom
 FROM hranica_malacky_pezinok;
 
+-- I check that buffer looks OK.
 SELECT ST_GeometryType(geom), ST_Area(geom)
 FROM hranica_malacky_pezinok_buffer;
 
--- Úseky ciest v okruhu 10 km od hranice
+
+-- Now I create a table with all roads located completely within 10 km of the boundary. ST_Within means the *entire* geometry is inside the buffer.
+-- Sometimes it's better to use ST_DWithin if I want partial overlap (faster too).
 CREATE TABLE roads_within_10km AS
 SELECT l.*
 FROM planet_osm_line AS l
          JOIN hranica_malacky_pezinok_buffer AS h
               ON ST_Within(ST_Transform(l.way, 5514), h.geom)
-WHERE l.highway IS NOT NULL;  -- vyberáme len cesty
--- ST_DWithin() zistí, či je geometria cesty do 10 km od hranice.
--- Transformácia na EPSG:5514 zaručí presnosť (v metroch).
+WHERE l.highway IS NOT NULL;  -- I keep only real roads
 
--- Úseky ciest, ktoré pretínajú alebo sa dotýkajú hranice
+-- Roads that touch or cross the boundary. ST_Intersects returns TRUE also for touching geometries. I transform both sides to EPSG:5514 to be precise.
 CREATE TABLE roads_touch_or_cross AS
 SELECT l.*
 FROM planet_osm_line AS l
          JOIN hranica_malacky_pezinok AS h
               ON ST_Intersects(ST_Transform(l.way, 5514), ST_Transform(h.geom, 5514))
 WHERE l.highway IS NOT NULL;
--- ST_Intersects() vracia TRUE, ak sa dve geometrie dotýkajú alebo pretínajú.
 
--- Overenie výsledkov
+-- Quick check of counts to see if I got data.
 SELECT COUNT(*) AS pocet_v_10km FROM roads_within_10km;
 SELECT COUNT(*) AS pocet_prienik FROM roads_touch_or_cross;
+-- If both counts are 0, it usually means the boundary geometries (Malacky/Pezinok), were not found or have wrong admin_level.
 ```
 
 After running the queries, both spatial tables were created successfully:  
@@ -423,17 +438,19 @@ print("✅ GNKU (katastrálne územia) bolo úspešne importované do PostGIS!")
 To make the queries faster, I created **GIST spatial indexes** on all geometry columns — this helps PostGIS skip unnecessary geometry checks.
 
 ```
+-- task 12
+-- I prepare indexes first — they speed up spatial queries massively.
+-- Without them, ST_Within and ST_DWithin are very slow.
 CREATE INDEX IF NOT EXISTS idx_osm_line_geom
     ON planet_osm_line USING GIST (way);
-
 CREATE INDEX IF NOT EXISTS idx_osm_polygon_geom
     ON planet_osm_polygon USING GIST (way);
-
 CREATE INDEX IF NOT EXISTS idx_zbgis_kat_geom
     ON zbgis_katastralne_uzemia USING GIST (geometry);
 
-
--- создаем подзапрос с полигоном Bratislavy
+-- I find the longest road in the Bratislava district and the cadastral area (ZBGIS) where it is.
+-- I merge all Bratislava parts (I–V) using ST_Union, otherwise the query returns nothing.
+-- I use ST_DWithin instead of ST_Intersects because ZBGIS geometries are points (centroids).
 WITH bratislava_okres AS (
     SELECT ST_Union(way) AS geom
     FROM planet_osm_polygon
@@ -450,11 +467,13 @@ FROM planet_osm_line AS r
               ON ST_DWithin(
                       ST_Transform(ST_Centroid(r.way), 5514),
                       ST_Transform(z.geometry, 5514),
-                      500  -- радиус в метрах (если GNKU — точки)
+                      500
                  )
 WHERE r.highway IS NOT NULL
 ORDER BY ST_Length(ST_Transform(r.way, 5514)) DESC
 LIMIT 1;
+-- The 500-meter tolerance is needed because GNKU points (ZBGIS) are centroids, not polygons.
+-- I also transform to EPSG:5514 for correct length in meters.
 ```
 
 Then I prepared the main query:
@@ -556,7 +575,9 @@ Bratislava,
 We see the dataset contained many “Bratislava” entries — including railway stations, postal codes, and business centers. Only the administrative polygons with names like *Bratislava I–V* were relevant to exclude. Since *Bratislava predmestie* lies outside those city parts, I kept it.
 
 ```
--- 1️⃣ Граница Bratislavy
+-- I create the “Okolie Bratislavy” area. All buffers and differences must be in 5514 (meters), never 4326.
+
+-- Select the Bratislava polygon
 CREATE OR REPLACE VIEW bratislava_okres AS
 SELECT way AS geom
 FROM planet_osm_polygon
@@ -567,22 +588,23 @@ CREATE OR REPLACE VIEW bratislava_buffer AS
 SELECT ST_Buffer(ST_Transform(geom, 5514), 20000) AS geom
 FROM bratislava_okres;
 
--- 3️⃣ Соберём все районы Bratislavy (кроме predmestie)
+-- Combine all parts of Bratislava (I–V) except "predmestie"
+-- I exclude everything with name ILIKE 'Bratislava%' except the “predmestie” area.
 CREATE OR REPLACE VIEW bratislava_casti AS
 SELECT ST_Union(way) AS geom
 FROM planet_osm_polygon
 WHERE name ILIKE 'Bratislava%'
-  AND name NOT ILIKE '%predmestie%'  -- predmestie оставляем
+  AND name NOT ILIKE '%predmestie%'
   AND admin_level = '9';
 
--- 4️⃣ Вычитаем саму Братиславу и её mestské časti из буфера
+-- Subtract Bratislava (and its parts) from the 20 km buffer
 CREATE OR REPLACE VIEW okolie_bratislavy_raw AS
 SELECT ST_Difference(
                (SELECT geom FROM bratislava_buffer),
                ST_Transform((SELECT ST_Union(geom) FROM bratislava_casti), 5514)
        ) AS geom;
 
--- 5️⃣ Ограничиваем территорией Slovenska
+-- Cut the buffer by Slovakia boundary so it doesn’t go outside the country
 CREATE OR REPLACE VIEW okolie_bratislavy AS
 SELECT ST_Intersection(
                (SELECT geom FROM okolie_bratislavy_raw),
@@ -593,10 +615,14 @@ SELECT ST_Intersection(
                )
        ) AS geom;
 
--- Find výmeru in km^2
+-- Calculate the area in km²
 SELECT
     ROUND((ST_Area(geom) / 1000000)::numeric, 2) AS vymera_km2
 FROM okolie_bratislavy;
+-- My result was 1838.07 km².
+-- ⚠️ If area = NULL, it usually means intersection failed because
+-- some geometry had invalid SRID or different coordinate system.
+
 ```
 
 ```
@@ -609,9 +635,7 @@ Visualization:
 The resulting polygon represents the **Bratislava surroundings** — the region within 20 km around the capital, excluding the city and limited to Slovak territory. This area could be useful for analyzing suburban development, commuting zones, or environmental studies around Bratislava.
 
 ---
-Výstup zadania je realizovaný formou protokolu, kde odpovedáte na jednotlivé otázky. Odpoveď pozostáva z SQL kódu, obrázku výstupu, mapy a zdôvodnenia. Protokol musí ďalej obsahovať všetky formálne náležitosti:
-Znenie zadania
-Meno a priezvisko riešiteľa
-Záver, kde zhodnotíte najväčšie úskalia a čo sa podarilo/nepodarilo realizovať.
+
+I successfully completed all the tasks. Each assignment was supplemented with visualization — either in Python (using GeoPandas and Matplotlib) or in geojson.io, even in cases where visualization was not explicitly required. During the work, I encountered several technical issues (for example, slow queries without indexes, a broken ZBGIS link, and the inability to install QGIS), but I solved all of them using alternative approaches. The biggest challenge was optimizing query performance and correctly transforming coordinate systems between EPSG:4326 and EPSG:5514. Overall, I successfully completed the entire project — all results were verified and visually presented.
 
 
