@@ -402,8 +402,8 @@ FROM planet_osm_line AS l
 WHERE l.highway IS NOT NULL;
 
 -- Quick check of counts to see if I got data.
-SELECT COUNT(*) AS pocet_v_10km FROM roads_within_10km;
-SELECT COUNT(*) AS pocet_prienik FROM roads_touch_or_cross;
+SELECT COUNT(*) AS pocet_v_10km FROM roads_within_10km;   -- result: 85515
+SELECT COUNT(*) AS pocet_prienik FROM roads_touch_or_cross; -- result: 100
 -- If both counts are 0, it usually means the boundary geometries (Malacky/Pezinok), were not found or have wrong admin_level.
 ```
 
