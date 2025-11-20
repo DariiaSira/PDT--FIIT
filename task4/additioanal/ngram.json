@@ -1,0 +1,4 @@
+{
+  "text": "London",
+  "analyzer": "custom_ngram"
+}

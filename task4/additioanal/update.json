@@ -1,0 +1,5 @@
+{
+  "script": {
+    "source": "ctx._source.retweet_count += 1"
+  }
+}
