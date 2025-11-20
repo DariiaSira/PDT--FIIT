@@ -633,3 +633,5 @@ Otherwise, a single node is not enough.
 - _seq_no increments with every update  
 - _primary_term changes only after a primary shard or master failure
 
+P.S.
+Since the web page didnt worked, I took the example of tweet structure from the Assigment1 and also the json example from one of the file. Thank you :)
