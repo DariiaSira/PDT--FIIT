@@ -89,7 +89,6 @@
         "type": "object",
         "dynamic": "strict",
         "properties": {
-
           "hashtags": {
             "type": "nested",
             "properties": {
@@ -121,31 +120,53 @@
                 "type": "text",
                 "analyzer": "englando",
                 "fields": {
-                  "ngram": { "type": "text", "analyzer": "custom_ngram" },
-                  "shingle": { "type": "text", "analyzer": "custom_shingles" }
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "custom_ngram"
+                  },
+                  "shingle": {
+                    "type": "text",
+                    "analyzer": "custom_shingles"
+                  }
                 }
               },
               "name": {
                 "type": "text",
                 "analyzer": "englando",
                 "fields": {
-                  "ngram": { "type": "text", "analyzer": "custom_ngram" },
-                  "shingle": { "type": "text", "analyzer": "custom_shingles" }
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "custom_ngram"
+                  },
+                  "shingle": {
+                    "type": "text",
+                    "analyzer": "custom_shingles"
+                  }
                 }
               },
-              "id": { "type": "long" },
-              "id_str": { "type": "keyword" },
-              "indices": { "type": "integer" }
+              "id": {
+                "type": "long"
+              },
+              "id_str": {
+                "type": "keyword"
+              },
+              "indices": {
+                "type": "integer"
+              }
             }
           },
-
           "urls": {
             "type": "nested",
             "properties": {
               "url": {
                 "type": "text",
                 "analyzer": "custom_ngram",
-                "fields": { "raw": { "type": "keyword", "index": false } }
+                "fields": {
+                  "raw": {
+                    "type": "keyword",
+                    "index": false
+                  }
+                }
               },
               "expanded_url": {
                 "type": "keyword",
@@ -155,10 +176,39 @@
                 "type": "keyword",
                 "index": false
               },
-              "indices": { "type": "integer" }
+              "indices": {
+                "type": "integer"
+              }
+            }
+          },
+          "media": {
+            "type": "nested",
+            "dynamic": false,
+            "properties": {
+              "id": {
+                "type": "long"
+              },
+              "id_str": {
+                "type": "keyword"
+              },
+              "media_url": {
+                "type": "keyword",
+                "index": false
+              },
+              "media_url_https": {
+                "type": "keyword",
+                "index": false
+              },
+              "type": {
+                "type": "keyword"
+              }
             }
           }
         }
+      },
+      "extended_entities": {
+        "type": "object",
+        "dynamic": false
       },
       "source": {
         "type": "keyword",
@@ -182,14 +232,12 @@
       "user": {
         "type": "object",
         "properties": {
-
           "id": {
             "type": "long"
           },
           "id_str": {
             "type": "keyword"
           },
-
           "name": {
             "type": "text",
             "analyzer": "englando",
@@ -199,7 +247,6 @@
               "raw": { "type": "keyword" }
             }
           },
-
           "screen_name": {
             "type": "text",
             "analyzer": "englando",
@@ -209,7 +256,6 @@
               "raw": { "type": "keyword" }
             }
           },
-
           "location": {
             "type": "text",
             "analyzer": "englando",
@@ -218,7 +264,6 @@
               "raw": { "type": "keyword" }
             }
           },
-
           "description": {
             "type": "text",
             "analyzer": "englando",
@@ -227,7 +272,6 @@
               "raw": { "type": "keyword", "index": false }
             }
           },
-
           "url": {
             "type": "text",
             "analyzer": "custom_ngram",
@@ -235,7 +279,6 @@
               "raw": { "type": "keyword", "index": false }
             }
           },
-
           "entities": {
             "type": "object",
             "dynamic": "strict",
@@ -270,17 +313,14 @@
               }
             }
           },
-
           "protected":       { "type": "boolean" },
           "followers_count": { "type": "integer" },
           "friends_count":   { "type": "integer" },
           "listed_count":    { "type": "integer" },
-
           "created_at": {
             "type": "date",
             "format": "EEE MMM dd HH:mm:ss Z yyyy"
           },
-
           "favourites_count": { "type": "integer" },
           "utc_offset":       { "type": "integer", "index": false },
           "time_zone":        { "type": "keyword", "index": false },
@@ -318,32 +358,26 @@
           "following":            { "type": "boolean" },
           "follow_request_sent":  { "type": "boolean" },
           "notifications":        { "type": "boolean" },
-          "translator_type":      { "type": "keyword" }
+          "translator_type":      { "type": "keyword" },
+
+          "withheld_in_countries": {
+            "type": "keyword"
+          },
+          "withheld_scope": {
+            "type": "keyword"
+          },
+          "withheld_copyright": {
+            "type": "boolean"
+          }
         }
       },
       "geo": {
         "type": "object",
-        "dynamic": "false",
-        "properties": {
-          "coordinates": {
-            "type": "float"
-          },
-          "type": {
-            "type": "keyword",
-            "index": false
-          }
-        }
+        "enabled": false
       },
       "coordinates": {
         "type": "object",
-        "properties": {
-          "type": {
-            "type": "keyword"
-          },
-          "coordinates": {
-            "type": "geo_point"
-          }
-        }
+        "enabled": false
       },
       "place": {
         "type": "object",
@@ -386,12 +420,14 @@
 
           "bounding_box": {
             "type": "object",
+            "dynamic": false,
             "properties": {
               "type": {
                 "type": "keyword"
               },
               "coordinates": {
-                "type": "geo_shape"
+                "type": "object",
+                "enabled": false
               }
             }
           },
@@ -439,37 +475,56 @@
                     "type": "keyword",
                     "normalizer": "lowercase_normalizer"
                   },
-                  "indices": { "type": "integer" }
+                  "indices": {
+                    "type": "integer"
+                  }
                 }
               },
               "symbols": {
                 "type": "nested",
                 "dynamic": false,
                 "properties": {
-                  "text": { "type": "keyword", "normalizer": "lowercase_normalizer" },
-                  "indices": { "type": "integer" }
+                  "text": {
+                    "type": "keyword",
+                    "normalizer": "lowercase_normalizer"
+                  },
+                  "indices": {
+                    "type": "integer"
+                  }
                 }
               },
-
               "user_mentions": {
                 "type": "nested",
                 "properties": {
                   "screen_name": {
                     "type": "text",
                     "analyzer": "custom_ngram",
-                    "fields": { "raw": { "type": "keyword" } }
+                    "fields": {
+                      "raw": {
+                        "type": "keyword"
+                      }
+                    }
                   },
                   "name": {
                     "type": "text",
                     "analyzer": "custom_ngram",
-                    "fields": { "raw": { "type": "keyword" } }
+                    "fields": {
+                      "raw": {
+                        "type": "keyword"
+                      }
+                    }
                   },
-                  "id": { "type": "long"},
-                  "id_str": { "type": "keyword" },
-                  "indices": { "type": "integer" }
+                  "id": {
+                    "type": "long"
+                  },
+                  "id_str": {
+                    "type": "keyword"
+                  },
+                  "indices": {
+                    "type": "integer"
+                  }
                 }
               },
-
               "urls": {
                 "type": "nested",
                 "dynamic": false,
@@ -477,16 +532,55 @@
                   "url": {
                     "type": "text",
                     "analyzer": "custom_ngram",
-                    "fields": { "raw": { "type": "keyword" } }
+                    "fields": {
+                      "raw": {
+                        "type": "keyword"
+                      }
+                    }
                   },
-                  "expanded_url": { "type": "keyword", "index": false },
-                  "display_url": { "type": "keyword", "index": false },
-                  "indices": { "type": "integer" }
+                  "expanded_url": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "display_url": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "indices": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "media": {
+                "type": "nested",
+                "dynamic": false,
+                "properties": {
+                  "id": {
+                    "type": "long"
+                  },
+                  "id_str": {
+                    "type": "keyword"
+                  },
+                  "media_url": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "media_url_https": {
+                    "type": "keyword",
+                    "index": false
+                  },
+                  "type": {
+                    "type": "keyword"
+                  }
                 }
               }
             }
           },
           "source": { "type": "keyword" },
+          "extended_entities": {
+            "type": "object",
+            "dynamic": false
+          },
           "in_reply_to_status_id": { "type": "long", "index": false },
           "in_reply_to_status_id_str": { "type": "keyword", "index": false },
           "in_reply_to_user_id": { "type": "long", "index": false },
@@ -581,16 +675,23 @@
               "following": { "type": "boolean" },
               "follow_request_sent": { "type": "boolean" },
               "notifications": { "type": "boolean" },
-              "translator_type": { "type": "keyword" }
+              "translator_type": { "type": "keyword" },
+
+              "withheld_in_countries": {
+            "type": "keyword"
+          },
+              "withheld_scope": {
+                "type": "keyword"
+              },
+              "withheld_copyright": {
+                "type": "boolean"
+              }
             }
           },
-          "geo": { "type": "object", "dynamic": false },
+          "geo": { "type": "object", "enabled": false },
           "coordinates": {
             "type": "object",
-            "properties": {
-              "type": { "type": "keyword" },
-              "coordinates": { "type": "geo_point" }
-            }
+            "enabled": false
           },
           "place": {
             "type": "object",
@@ -625,7 +726,10 @@
                 "dynamic": false,
                 "properties": {
                   "type": { "type": "keyword" },
-                  "coordinates": { "type": "geo_shape" }
+                  "coordinates": {
+                    "type": "object",
+                    "enabled": false
+                  }
                 }
               },
 
@@ -652,14 +756,12 @@
             "type": "object",
             "dynamic": "strict",
             "properties": {
-
               "created_at": {
                 "type": "date",
                 "format": "EEE MMM dd HH:mm:ss Z yyyy"
               },
               "id": { "type": "long" },
               "id_str": { "type": "keyword" },
-
               "full_text": {
                 "type": "text",
                 "analyzer": "englando",
@@ -668,12 +770,11 @@
                   "raw": { "type": "keyword" }
                 }
               },
-
               "truncated": { "type": "boolean" },
               "display_text_range": { "type": "integer" },
               "entities": {
                 "type": "object",
-                "dynamic": false,
+                "dynamic": "strict",
                 "properties": {
                   "hashtags": {
                     "type": "nested",
@@ -743,8 +844,23 @@
                       },
                       "indices": { "type": "integer" }
                     }
+                  },
+                  "media": {
+                    "type": "nested",
+                    "dynamic": false,
+                    "properties": {
+                      "id":        { "type": "long" },
+                      "id_str":    { "type": "keyword" },
+                      "media_url": { "type": "keyword", "index": false },
+                      "media_url_https": { "type": "keyword", "index": false },
+                      "type":      { "type": "keyword" }
+                    }
                   }
                 }
+              },
+              "extended_entities": {
+                "type": "object",
+                "dynamic": false
               },
               "source": { "type": "keyword" },
               "in_reply_to_status_id": { "type": "long", "index": false },
@@ -842,19 +958,23 @@
                   "following": { "type": "boolean" },
                   "follow_request_sent": { "type": "boolean" },
                   "notifications": { "type": "boolean" },
-                  "translator_type": { "type": "keyword" }
+                  "translator_type": { "type": "keyword" },
+
+                  "withheld_in_countries": {
+            "type": "keyword"
+          },
+                  "withheld_scope": {
+                    "type": "keyword"
+                  },
+                  "withheld_copyright": {
+                    "type": "boolean"
+                  }
                 }
               },
-
-              "geo": { "type": "object", "dynamic": false },
-
+              "geo": { "type": "object", "enabled": false },
               "coordinates": {
                 "type": "object",
-                "dynamic": false,
-                "properties": {
-                  "type": { "type": "keyword" },
-                  "coordinates": { "type": "geo_point" }
-                }
+                "enabled": false
               },
               "place": {
                 "type": "object",
@@ -889,7 +1009,10 @@
                     "dynamic": false,
                     "properties": {
                       "type": { "type": "keyword" },
-                      "coordinates": { "type": "geo_shape" }
+                      "coordinates": {
+                        "type": "object",
+                        "enabled": false
+                      }
                     }
                   },
 
@@ -912,14 +1035,30 @@
                   "display": { "type": "keyword", "index": false }
                 }
               },
-
               "retweet_count": { "type": "integer" },
               "favorite_count": { "type": "integer" },
               "favorited": { "type": "boolean" },
               "retweeted": { "type": "boolean" },
               "possibly_sensitive": { "type": "boolean" },
+              "lang": { "type": "keyword" },
 
-              "lang": { "type": "keyword" }
+              "scopes": {
+        "type": "object",
+        "dynamic": false
+      },
+              "current_user_retweet": {
+                "type": "object",
+                "dynamic": false
+              },
+              "withheld_copyright": {
+                "type": "boolean"
+              },
+              "withheld_in_countries": {
+                "type": "keyword"
+              },
+              "withheld_scope": {
+                "type": "keyword"
+              }
             }
           },
           "retweet_count": { "type": "integer" },
@@ -927,8 +1066,26 @@
           "favorited": { "type": "boolean" },
           "retweeted": { "type": "boolean" },
           "possibly_sensitive": { "type": "boolean" },
+          "lang": { "type": "keyword" },
 
-          "lang": { "type": "keyword" }
+          "scopes": {
+        "type": "object",
+        "dynamic": false
+      },
+          "current_user_retweet": {
+            "type": "object",
+            "dynamic": false
+          },
+          "withheld_copyright": {
+            "type": "boolean"
+          },
+          "withheld_in_countries": {
+            "type": "keyword"
+          },
+          "withheld_scope": {
+            "type": "keyword"
+          }
+
         }
       },
       "is_quote_status": {
@@ -960,6 +1117,10 @@
       "retweet_count": {
         "type": "integer"
       },
+      "quoted_status": {
+        "type": "object",
+        "dynamic": false
+      },
       "favorite_count": {
         "type": "integer"
       },
@@ -974,7 +1135,26 @@
       },
       "lang": {
         "type": "keyword"
+      },
+
+      "scopes": {
+        "type": "object",
+        "dynamic": false
+      },
+      "current_user_retweet": {
+        "type": "object",
+        "dynamic": false
+      },
+      "withheld_copyright": {
+        "type": "boolean"
+      },
+      "withheld_in_countries": {
+        "type": "keyword"
+      },
+      "withheld_scope": {
+        "type": "keyword"
       }
+
     }
   }
 }
