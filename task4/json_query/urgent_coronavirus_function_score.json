@@ -1,0 +1,44 @@
+{
+  "size": 1,
+  "query": {
+    "function_score": {
+      "query": {
+        "multi_match": {
+          "query": "urgent coronavirus",
+          "fields": [
+            "full_text^2",
+            "user.description"
+          ]
+        }
+      },
+      "functions": [
+        {
+          "field_value_factor": {
+            "field": "retweet_count",
+            "modifier": "log1p",
+            "factor": 1.0
+          }
+        },
+        {
+          "gauss": {
+            "created_at": {
+              "origin": "now",
+              "offset": "7d",
+              "scale": "30d"
+            }
+          }
+        },
+        {
+          "filter": {
+            "term": {
+              "user.verified": true
+            }
+          },
+          "weight": 2.0
+        }
+      ],
+      "score_mode": "multiply",
+      "boost_mode": "multiply"
+    }
+  }
+}

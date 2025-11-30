@@ -1,0 +1,50 @@
+{
+  "size": 2,
+  "_source": [
+    "full_text",
+    "user.screen_name",
+    "user.followers_count",
+    "created_at"
+  ],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_phrase": {
+            "full_text": {
+              "query": "deaths reported",
+              "slop": 5
+            }
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "match_phrase": {
+            "full_text": "fake news"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "user.followers_count": {
+              "gt": 10
+            }
+          }
+        }
+      ]
+    }
+  },
+  "highlight": {
+    "pre_tags": [
+      "<em>"
+    ],
+    "post_tags": [
+      "</em>"
+    ],
+    "fields": {
+      "full_text": {}
+    }
+  }
+}

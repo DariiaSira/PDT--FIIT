@@ -1,0 +1,46 @@
+{
+  "size": 1,
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "nested": {
+            "path": "entities.hashtags",
+            "query": {
+              "bool": {
+                "should": [
+                  { "term": { "entities.hashtags.text": "covid" } },
+                  { "term": { "entities.hashtags.text": "virus" } }
+                ]
+              }
+            },
+            "inner_hits": {
+              "name": "matched_hashtags",
+              "size": 5
+            }
+          }
+        },
+        {
+          "nested": {
+            "path": "entities.user_mentions",
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "term": {
+                      "entities.user_mentions.screen_name": "realdonaldtrump"
+                    }
+                  }
+                ]
+              }
+            },
+            "inner_hits": {
+              "name": "matched_mentions",
+              "size": 5
+            }
+          }
+        }
+      ]
+    }
+  }
+}
