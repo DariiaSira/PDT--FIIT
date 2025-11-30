@@ -1,0 +1,48 @@
+{
+  "size": 0,
+  "aggs": {
+    "venezuela": {
+      "filter": {
+        "bool": {
+          "should": [
+            { "match_phrase": { "user.location": "Venezolano" } },
+            { "match_phrase": { "user.location": "Venezuela" } }
+          ]
+        }
+      },
+      "aggs": {
+        "venezuela_per_day": {
+          "date_histogram": {
+            "field": "created_at",
+            "calendar_interval": "1d"
+          },
+          "aggs": {
+            "avg_retweets": {
+              "avg": {
+                "field": "retweet_count"
+              }
+            }
+          }
+        }
+      }
+    },
+    "global": {
+      "global": {},
+      "aggs": {
+        "global_per_day": {
+          "date_histogram": {
+            "field": "created_at",
+            "calendar_interval": "1d"
+          },
+          "aggs": {
+            "avg_retweets": {
+              "avg": {
+                "field": "retweet_count"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
