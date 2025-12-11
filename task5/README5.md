@@ -16,14 +16,6 @@ Design a MongoDB data model for a lightweight social network similar to Instagra
 
 3. **Provide JSON-like examples** for your proposed document structures, e.g.:
 
-```json
-{
-  "_id": ObjectId,
-  "username": "string",
-  ...
-}
-```
-
 ## Main Entities in the System
 
 ```
@@ -115,7 +107,7 @@ For reactions, we use the Polymorphic Pattern so that a single structure support
 
 As the third pattern, we use the Bucket Pattern for user activity history: rather than storing millions of individual events (each like, comment, or post) as separate documents, we group them into time‑based buckets, such as monthly activity per user. Each bucket contains an array of actions for a given (userId, month), reducing the number of documents, improving analytical and history queries, and demonstrating advanced MongoDB data‑modeling practices. Follow relationships are kept in a dedicated follows collection using simple references between users (followerId and followedId), while users also maintain follower/following counters; this design makes follow/unfollow updates cheap and supports efficient feed generation based on the list of followed users.
 
-So, JSON examples are below:
+So, JSON examples are below (I made it as a schema, not like real JSON example with names):
 
 **Users**
 ```
@@ -141,7 +133,7 @@ So, JSON examples are below:
 }
 ```
 
-**Posts (embed author snapshot + subset comments)**
+**Posts**
 ```
 {
   _id: ObjectId,
@@ -189,7 +181,7 @@ So, JSON examples are below:
 }
 ```
 
-**Reactions (Polymorphic pattern)**
+**Reactions**
 ```
 {
   _id: ObjectId,
@@ -211,7 +203,7 @@ So, JSON examples are below:
 }
 ```
 
-**User_activity (Bucket pattern, optional)**
+**User_activity**
 ```
 {
   _id: ObjectId,
